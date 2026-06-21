@@ -13,7 +13,7 @@
 			"binding": "DB",
 			"database_name": "shuiliyue-store-db",
 			"migrations_dir": "prisma/migrations",
-			// "database_id": "9acd3d12-b491-4bb1-b6b4-7cf12d6b356d", // 执行 wrangler d1 命令必须，但是与cf一键部署冲突所以注释
+			"database_id": "9acd3d12-b491-4bb1-b6b4-7cf12d6b356d"
 		}
 	],
 	"triggers": {
