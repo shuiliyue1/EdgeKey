@@ -14,6 +14,7 @@ import { createEpayAdapter } from "./epay";
 import { createAlipayAdapter, queryAlipayTrade } from "./alipay";
 import { createAlipayFaceAdapter } from "./alipay-face";
 import { createStripeAdapter } from "./stripe";
+import { createHashpayAdapter } from "./hashpay";
 import { deliverOrder } from "../delivery/service";
 import { findOrderRecord, updateOrderPayment } from "../order/repository";
 
@@ -77,6 +78,17 @@ const defaultPaymentConfigs: Record<PaymentProvider, PaymentConfigValue> = {
     isEnabled: false,
     baseUrl: "",
     notifyUrl: "/api/payments/free/notify",
+    returnUrl: "/order/{orderNo}?token={token}",
+  },
+  HASHPAY: {
+    provider: "HASHPAY",
+    name: "HashPay",
+    isEnabled: false,
+    baseUrl: "",
+    hashpayMerchantId: "",
+    hashpayPrivateKey: "",
+    hashpayCurrency: "CNY",
+    notifyUrl: "/api/payments/hashpay/notify",
     returnUrl: "/order/{orderNo}?token={token}",
   },
 };
@@ -155,6 +167,9 @@ export async function savePaymentConfig(input: PaymentConfigValue) {
     stripeSecretKey: input.stripeSecretKey?.trim() || "",
     stripeWebhookSecret: input.stripeWebhookSecret?.trim() || "",
     stripeCurrency: input.stripeCurrency?.trim() || "cny",
+    hashpayMerchantId: input.hashpayMerchantId?.trim() || "",
+    hashpayPrivateKey: input.hashpayPrivateKey?.trim() || "",
+    hashpayCurrency: input.hashpayCurrency?.trim() || "CNY",
   };
 
   const record = await upsertPaymentConfigRecord(prisma, input.provider, {
@@ -191,6 +206,9 @@ function createProviderAdapter(config: PaymentConfigValue) {
   }
   if (config.provider === "STRIPE") {
     return createStripeAdapter(config);
+  }
+  if (config.provider === "HASHPAY") {
+    return createHashpayAdapter(config);
   }
   return createEpayAdapter(config);
 }
@@ -575,7 +593,7 @@ export async function handlePaymentNotify(
         select: { deliveryType: true },
       });
 
-      if (product?.deliveryType !== "MANUAL") {
+      if (product?.deliveryType !== "MANUAL" && product?.deliveryType !== "EXPRESS") {
         try {
           await deliverOrder(prisma, order.orderNo);
           message = "already paid; delivery retried";
@@ -655,6 +673,7 @@ export async function handlePaymentNotify(
           productName: order.productNameSnapshot,
           amount: order.amount,
           toEmail: order.contactValue,
+          contactEmail: order.contactValue,
           buyerNote: order.buyerNote,
         });
       } catch (error) {
